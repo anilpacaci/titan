@@ -1,8 +1,11 @@
 package com.thinkaurelius.titan.core;
 
 import com.thinkaurelius.titan.core.schema.TitanManagement;
+import com.thinkaurelius.titan.util.io.TitanIo;
+
 import org.apache.tinkerpop.gremlin.process.computer.GraphComputer;
 import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.io.Io;
 
 /**
  * Titan graph database implementation of the Blueprint's interface.
@@ -104,7 +107,9 @@ public interface TitanGraph extends TitanGraphTransaction {
     @Override
     public void close() throws TitanException;
 
-
+    public default <I extends TitanIo> I io(final TitanIo.Builder<I> builder) {
+        return (I) builder.graph(this).create();
+    }
 
 
 
