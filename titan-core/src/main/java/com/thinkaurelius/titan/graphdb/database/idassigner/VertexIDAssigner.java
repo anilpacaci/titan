@@ -130,15 +130,19 @@ public class VertexIDAssigner implements AutoCloseable {
 	}
 
 	public void assignID(InternalRelation relation) {
-		assignID(relation, null);
+		assignID(relation, null, null);
 	}
 
 	public void assignID(InternalVertex vertex, VertexLabel label) {
 		Preconditions.checkArgument(vertex != null && label != null);
-		assignID(vertex, getVertexIDType(label));
+		assignID(vertex, getVertexIDType(label), null);
 	}
 
-	private void assignID(InternalElement element, IDManager.VertexIDType vertexIDType) {
+	public void assignID(InternalVertex vertex, VertexLabel label, StarVertex starVertex) {
+		assignID(vertex, getVertexIDType(label), starVertex);
+	}
+
+	private void assignID(InternalElement element, IDManager.VertexIDType vertexIDType, StarVertex starVertex) {
 		for (int attempt = 0; attempt < MAX_PARTITION_RENEW_ATTEMPTS; attempt++) {
 			long partitionID = -1;
 			if (element instanceof TitanSchemaVertex) {
@@ -240,7 +244,7 @@ public class VertexIDAssigner implements AutoCloseable {
 				for (int i = 0; i < relation.getArity(); i++) {
 					InternalVertex vertex = relation.getVertex(i);
 					if (!vertex.hasId()) {
-						assignID(vertex, getVertexIDType(vertex));
+						assignID(vertex, getVertexIDType(vertex), null);
 					}
 				}
 				assignID(relation);
@@ -261,11 +265,11 @@ public class VertexIDAssigner implements AutoCloseable {
 																		// the
 																		// transaction
 						if (vertex.vertexLabel().isPartitioned())
-							assignID(vertex, getVertexIDType(vertex)); // Assign
-																		// partitioned
-																		// vertex
-																		// ids
-																		// immediately
+							assignID(vertex, getVertexIDType(vertex), null); // Assign
+						// partitioned
+						// vertex
+						// ids
+						// immediately
 						else
 							assignments.put(vertex, PartitionAssignment.EMPTY);
 					}

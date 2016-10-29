@@ -2,6 +2,7 @@ package com.thinkaurelius.titan.core;
 
 import com.thinkaurelius.titan.core.schema.SchemaManager;
 import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
 
 import java.util.Collection;
 import java.util.Map;
@@ -44,6 +45,8 @@ public interface TitanGraphTransaction extends Graph, SchemaManager {
 
     @Override
     public TitanVertex addVertex(Object... objects);
+    
+    public TitanVertex addStarVertex(StarVertex starVertex, Object... objects);
 
     /**
      * @return

@@ -60,6 +60,7 @@ import com.thinkaurelius.titan.util.system.TXUtils;
 import org.apache.tinkerpop.gremlin.process.traversal.TraversalStrategies;
 import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.Graph;
+import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -435,6 +436,10 @@ public class StandardTitanGraph extends TitanBlueprintsGraph {
 
     public void assignID(InternalVertex vertex, VertexLabel label) {
         idAssigner.assignID(vertex,label);
+    }
+    
+    public void assignID(InternalVertex vertex, VertexLabel label, StarVertex starVertex) {
+    	idAssigner.assignID(vertex, label, starVertex);
     }
 
     public static boolean acquireLock(InternalRelation relation, int pos, boolean acquireLocksConfig) {

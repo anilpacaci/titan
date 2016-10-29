@@ -15,6 +15,7 @@ import com.thinkaurelius.titan.graphdb.idmanagement.IDManager;
 import com.thinkaurelius.titan.graphdb.internal.InternalElement;
 import com.thinkaurelius.titan.graphdb.internal.InternalVertex;
 
+import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,15 @@ public class SimpleBulkPlacementStrategy implements IDPlacementStrategy {
     @Override
     public int getPartition(InternalElement element) {
         return nextPartitionID();
+    }
+    
+    /**
+     * Calls {@link SimpleBulkPlacementStrategy#getPartition(InternalElement)}
+     * @param vertex No effect for this simple placement strategy
+     */
+    @Override
+    public int getPartition(InternalElement element, StarVertex vertex) {
+    	return getPartition(element);
     }
 
     @Override

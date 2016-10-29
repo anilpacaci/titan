@@ -62,7 +62,7 @@ import com.thinkaurelius.titan.graphdb.vertices.StandardVertex;
 import com.thinkaurelius.titan.util.datastructures.Retriever;
 import com.thinkaurelius.titan.util.stats.MetricManager;
 import org.apache.tinkerpop.gremlin.structure.*;
-
+import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
 import org.apache.commons.lang.StringUtils;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.slf4j.Logger;
@@ -490,7 +490,12 @@ public class StandardTitanTx extends TitanBlueprintsTransaction implements TypeI
 
     @Override
     public TitanVertex addVertex(Long vertexId, VertexLabel label) {
-        verifyWriteAccess();
+        return addStarVertex(vertexId, label, null);
+    }
+    
+    @Override
+    public TitanVertex addStarVertex(Long vertexId, VertexLabel label, StarVertex starVertex) {
+    	verifyWriteAccess();
         if (label==null) label=BaseVertexLabel.DEFAULT_VERTEXLABEL;
         if (vertexId != null && !graph.getConfiguration().allowVertexIdSetting()) {
             log.info("Provided vertex id [{}] is ignored because vertex id setting is not enabled", vertexId);
@@ -504,7 +509,7 @@ public class StandardTitanTx extends TitanBlueprintsTransaction implements TypeI
         if (vertexId != null) {
             vertex.setId(vertexId);
         } else if (config.hasAssignIDsImmediately() || label.isPartitioned()) {
-            graph.assignID(vertex,label);
+            graph.assignID(vertex,label, starVertex);
         }
         addProperty(vertex, BaseKey.VertexExists, Boolean.TRUE);
         if (label!=BaseVertexLabel.DEFAULT_VERTEXLABEL) { //Add label
@@ -513,7 +518,6 @@ public class StandardTitanTx extends TitanBlueprintsTransaction implements TypeI
         }
         vertexCache.add(vertex, vertex.longId());
         return vertex;
-
     }
 
     @Override

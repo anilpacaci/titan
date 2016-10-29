@@ -7,6 +7,8 @@ import com.thinkaurelius.titan.graphdb.internal.InternalVertex;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
+
 /**
  * Determines how vertices are placed in individual graph partitions.
  * A particular implementation determines the partition id of a (newly created) vertex. The vertex is
@@ -25,6 +27,15 @@ public interface IDPlacementStrategy {
      * @return
      */
     public int getPartition(InternalElement element);
+    
+    /**
+     * Individually assigns an id to the given vertex or relation.
+     *
+     * @param element Vertex or relation to assign id to.
+     * @param vertex Provides necessary context for greedy partitining heuristics (properties and adjacency information)
+     * @return
+     */
+    public int getPartition(InternalElement element, StarVertex vertex);
 
     /**
      * Bulk assignment of idAuthorities to vertices.
