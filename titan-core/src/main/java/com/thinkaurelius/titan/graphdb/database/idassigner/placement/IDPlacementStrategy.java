@@ -36,7 +36,22 @@ public interface IDPlacementStrategy {
      * @return
      */
     public int getPartition(InternalElement element, StarVertex vertex);
+    
+    /**
+     * helper method to hint partitioning algorithm about the final placement of element
+     * @param element that was assigned
+     * @param partitionID final assignment for element
+     */
+    public void assignedPartition(InternalElement element, int partitionID);
 
+    /**
+     * helper method to hint partitioning algorithm about the final placement of element
+     * @param element that was assigned
+     * @param vertex Context information for greedy partitioners
+     * @param partitionID final assignment for element
+     */
+    public void assignedPartition(InternalElement element, StarVertex vertex, int partitionID);
+    
     /**
      * Bulk assignment of idAuthorities to vertices.
      * <p/>

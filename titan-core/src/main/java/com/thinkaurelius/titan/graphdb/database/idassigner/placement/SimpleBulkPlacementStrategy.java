@@ -85,7 +85,7 @@ public class SimpleBulkPlacementStrategy implements IDPlacementStrategy {
     
     /**
      * Calls {@link SimpleBulkPlacementStrategy#getPartition(InternalElement)}
-     * @param vertex No effect for this simple placement strategy
+     * @param vertex ignored for this simple placement strategy
      */
     @Override
     public int getPartition(InternalElement element, StarVertex vertex) {
@@ -129,4 +129,15 @@ public class SimpleBulkPlacementStrategy implements IDPlacementStrategy {
             }
         }
     }
+
+	@Override
+	public void assignedPartition(InternalElement element, int partitionID) {
+		// we do not need assignment hints for this partitioner
+		
+	}
+
+	@Override
+	public void assignedPartition(InternalElement element, StarVertex vertex, int partitionID) {
+		// we do not need assignment hints for this partitioner
+	}
 }

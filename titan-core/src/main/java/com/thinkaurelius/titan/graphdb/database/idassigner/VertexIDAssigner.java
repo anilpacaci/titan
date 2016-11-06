@@ -150,8 +150,10 @@ public class VertexIDAssigner implements AutoCloseable {
 			} else if (element instanceof TitanVertex) {
 				if (vertexIDType == IDManager.VertexIDType.PartitionedVertex)
 					partitionID = IDManager.PARTITIONED_VERTEX_PARTITION;
-				else
-					partitionID = placementStrategy.getPartition(element);
+				else {
+					// WARN only place this call can happen with StarVertex. Because TitanGryoReader reads vertex by vertex
+					partitionID = placementStrategy.getPartition(element, starVertex);
+				}
 			} else if (element instanceof InternalRelation) {
 				InternalRelation relation = (InternalRelation) element;
 				if (attempt < relation.getLen()) { // On the first attempts, try
@@ -174,6 +176,9 @@ public class VertexIDAssigner implements AutoCloseable {
 				continue; // try again on a different partition
 			}
 			assert element.hasId();
+			// hint placememntStrategy about final assignment. not effective for
+			// default SimpleBulkPlacementStrategy
+			if(starVertex != null) placementStrategy.assignedPartition(element, starVertex, (int) partitionID);
 
 			/**
 			 * The next block of code checks the added the relation for

@@ -68,9 +68,7 @@ public class TitanGryoIo implements TitanIo<TitanGryoReader.Builder, GryoWriter.
 	 */
 	@Override
 	public void readGraph(final String file) throws IOException {
-		try (final InputStream in = new FileInputStream(file)) {
-			reader().create().readGraph(in, graph);
-		}
+		reader().create().readGraph(file, graph);
 	}
 
 	public static TitanIo.Builder<TitanGryoIo> build() {
