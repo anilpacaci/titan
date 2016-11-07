@@ -8,6 +8,9 @@ package com.thinkaurelius.titan.graphdb.database.idassigner.placement;
  */
 public interface PlacementHistory {
 	
+	public static String IN_MEMORY_PLACEMENT_HISTORY = "inmemory";
+	public static String MEMCACHED_PLACEMENT_HISTORY = "memcached";
+	
 	/**
 	 * Partition ID of the element specifid by ID
 	 * @param id

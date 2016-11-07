@@ -81,6 +81,8 @@ public final class TitanGryoReader implements GraphReader {
 		management.buildIndex(ORIGINAL_ID_INDEX_NAME, Vertex.class).addKey(originalIDProperty).buildCompositeIndex();
 		management.commit();
 
+		log.warn("Temporary original ID index have been created");
+
 		try {
 			ManagementSystem.awaitGraphIndexStatus(graphToWriteTo, ORIGINAL_ID_INDEX_NAME).call();
 			// just make sure existing data is indexed
@@ -96,9 +98,13 @@ public final class TitanGryoReader implements GraphReader {
 		FileInputStream inputStream = new FileInputStream(file);
 		readVertices(inputStream, graphToWriteTo);
 
+		log.warn("Vertices are read into the graph");
+
 		// now read the edges
 		inputStream = new FileInputStream(file);
 		readEdges(inputStream, graphToWriteTo);
+
+		log.warn("Edges are read into the graph");
 
 		// now we need to drop the extra index
 		management = graphToWriteTo.openManagement();
@@ -115,6 +121,7 @@ public final class TitanGryoReader implements GraphReader {
 			graphIndex = management.getGraphIndex(ORIGINAL_ID_INDEX_NAME);
 			management.updateIndex(graphIndex, SchemaAction.REMOVE_INDEX).get();
 			management.commit();
+			log.warn("Temporary original ID index have been removed");
 		} catch (InterruptedException | ExecutionException e) {
 			log.error("Index removal failed, it needs to be removed manually", e);
 		}
@@ -164,6 +171,8 @@ public final class TitanGryoReader implements GraphReader {
 
 		if (supportsTx)
 			graphToWriteTo.tx().commit();
+
+		log.warn("Total number of vertices {}", counter.get());
 	}
 
 	/**

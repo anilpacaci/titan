@@ -37,6 +37,15 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 			"Total size (number of vertices) for all partitions, only applicable for explicit graph partitioners",
 			ConfigOption.Type.MASKABLE, 10);
 
+	public static final ConfigOption<String> IDS_PLACEMENT_HISTORY = new ConfigOption<String>(
+			GraphDatabaseConfiguration.IDS_NS, "placement-history",
+			"Placement history Implementation for Greedy Partitioners", ConfigOption.Type.MASKABLE, "inmemory");
+
+	public static final ConfigOption<String> IDS_PLACEMENT_HISTORY_HOSTNAME = new ConfigOption<String>(
+			GraphDatabaseConfiguration.IDS_NS, "placement-history-hostname",
+			"Memcached Server address for Placement History Implementation", ConfigOption.Type.MASKABLE,
+			"localhost:11211");
+
 	private final Random random = new Random();
 
 	private int maxPartitions;
@@ -50,14 +59,22 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 
 	private PlacementHistory placementHistory;
 
-	public LDGGreedyPlacementStrategy(int maxPartitions, int totalCapacity) {
+	public LDGGreedyPlacementStrategy(Configuration config) {
+		int maxPartitions = config.get(GraphDatabaseConfiguration.CLUSTER_MAX_PARTITIONS);
+		int totalCapacity = config.get(TOTAL_CAPACITY);
+
 		Preconditions.checkArgument(totalCapacity > 0 && maxPartitions > 0);
 
 		this.maxPartitions = maxPartitions;
 		this.totalCapacity = totalCapacity;
 		this.partitionCapacity = totalCapacity / maxPartitions;
 
-		placementHistory = new MemcachedPlacementHistory(new String[]{"localhost:11211"});
+		if (config.get(IDS_PLACEMENT_HISTORY).equals(PlacementHistory.MEMCACHED_PLACEMENT_HISTORY)) {
+			String hostname = config.get(IDS_PLACEMENT_HISTORY_HOSTNAME);
+			this.placementHistory = new MemcachedPlacementHistory(hostname);
+		} else {
+			this.placementHistory = new InMemoryPlacementHistory(totalCapacity);
+		}
 
 		availablePartitions = new ArrayList<>(maxPartitions);
 		partitionSizes = new int[maxPartitions];
@@ -66,10 +83,6 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 		for (int i = 0; i < maxPartitions; i++) {
 			availablePartitions.add(i);
 		}
-	}
-
-	public LDGGreedyPlacementStrategy(Configuration config) {
-		this(config.get(GraphDatabaseConfiguration.CLUSTER_MAX_PARTITIONS), config.get(TOTAL_CAPACITY));
 	}
 
 	@Override
@@ -81,7 +94,7 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 	@Override
 	public int getPartition(InternalElement element, StarVertex vertex) {
 		// assign first 0.1% of vertices randomly
-		if(this.counter < this.totalCapacity / 1000) {
+		if (this.counter < this.totalCapacity / 1000) {
 			return getRandomPartition();
 		}
 
