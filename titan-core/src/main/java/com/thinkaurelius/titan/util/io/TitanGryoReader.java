@@ -45,6 +45,10 @@ import com.thinkaurelius.titan.core.schema.SchemaAction;
 import com.thinkaurelius.titan.core.schema.SchemaStatus;
 import com.thinkaurelius.titan.core.schema.TitanGraphIndex;
 import com.thinkaurelius.titan.core.schema.TitanManagement;
+import com.thinkaurelius.titan.diskstorage.configuration.ConfigOption;
+import com.thinkaurelius.titan.diskstorage.configuration.Configuration;
+import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
+import com.thinkaurelius.titan.graphdb.database.StandardTitanGraph;
 import com.thinkaurelius.titan.graphdb.database.management.ManagementSystem;
 
 /**
@@ -56,6 +60,14 @@ import com.thinkaurelius.titan.graphdb.database.management.ManagementSystem;
 public final class TitanGryoReader implements GraphReader {
 
 	private static final Logger log = LoggerFactory.getLogger(TitanGryoReader.class);
+
+	public static final ConfigOption<String> IDS_LOADER_MAPPING = new ConfigOption<String>(
+			GraphDatabaseConfiguration.IDS_NS, "loader-mapping", "ID Mapping implementation for TitanGryoReader",
+			ConfigOption.Type.MASKABLE, "inmemory");
+
+	public static final ConfigOption<String> IDS_LOADER_MAPPING_HOSTNAME = new ConfigOption<String>(
+			GraphDatabaseConfiguration.IDS_NS, "loader-mapping-hostname",
+			"Memcached Server address for ID Mapping Implementation", ConfigOption.Type.MASKABLE, "localhost:11211");
 
 	private static final String ORIGINAL_ID_PROPERTY = "originalID";
 	private static final String ORIGINAL_ID_INDEX_NAME = "byOriginalID";
@@ -70,61 +82,30 @@ public final class TitanGryoReader implements GraphReader {
 	}
 
 	public void readGraph(final String file, final TitanGraph graphToWriteTo) throws IOException {
-		// an extra indexed property on original IDs
-		TitanManagement management = graphToWriteTo.openManagement();
-		PropertyKey originalIDProperty = management.makePropertyKey(ORIGINAL_ID_PROPERTY).dataType(Long.class)
-				.cardinality(Cardinality.SINGLE).make();
-		management.commit();
-		// now index this property
-		management = graphToWriteTo.openManagement();
-		originalIDProperty = management.getPropertyKey(ORIGINAL_ID_PROPERTY);
-		management.buildIndex(ORIGINAL_ID_INDEX_NAME, Vertex.class).addKey(originalIDProperty).buildCompositeIndex();
-		management.commit();
-
-		log.warn("Temporary original ID index have been created");
-
-		try {
-			ManagementSystem.awaitGraphIndexStatus(graphToWriteTo, ORIGINAL_ID_INDEX_NAME).call();
-			// just make sure existing data is indexed
-			management = graphToWriteTo.openManagement();
-			management.updateIndex(management.getGraphIndex(ORIGINAL_ID_INDEX_NAME), SchemaAction.REINDEX).get();
-			management.commit();
-		} catch (InterruptedException | ExecutionException e) {
-			log.error("Index creation failed, graph will not be added", e);
-			return;
+		// first initialize ID Mapping implementation
+		IDMapping idMapping;
+		Configuration configuration = ((StandardTitanGraph) graphToWriteTo).getConfiguration().getConfiguration();
+		if (configuration.get(IDS_LOADER_MAPPING).equals(IDMapping.MEMCACHED_IDMAPPING)) {
+			String hostname = configuration.get(IDS_LOADER_MAPPING_HOSTNAME);
+			idMapping = new MemcachedIDMapping(hostname);
+		} else {
+			idMapping = new InMemoryIDMapping();
 		}
+
+		log.warn("ID Index have been created");
 
 		// first read vertices from stream
 		FileInputStream inputStream = new FileInputStream(file);
-		readVertices(inputStream, graphToWriteTo);
+		readVertices(inputStream, graphToWriteTo, idMapping);
 
 		log.warn("Vertices are read into the graph");
 
 		// now read the edges
 		inputStream = new FileInputStream(file);
-		readEdges(inputStream, graphToWriteTo);
+		readEdges(inputStream, graphToWriteTo, idMapping);
 
 		log.warn("Edges are read into the graph");
 
-		// now we need to drop the extra index
-		management = graphToWriteTo.openManagement();
-		TitanGraphIndex graphIndex = management.getGraphIndex(ORIGINAL_ID_INDEX_NAME);
-		try {
-			// disable index first
-			management.updateIndex(graphIndex, SchemaAction.DISABLE_INDEX).get();
-			management.commit();
-			ManagementSystem.awaitGraphIndexStatus(graphToWriteTo, ORIGINAL_ID_INDEX_NAME).status(SchemaStatus.DISABLED)
-					.call();
-
-			// now we can remove index
-			management = graphToWriteTo.openManagement();
-			graphIndex = management.getGraphIndex(ORIGINAL_ID_INDEX_NAME);
-			management.updateIndex(graphIndex, SchemaAction.REMOVE_INDEX).get();
-			management.commit();
-			log.warn("Temporary original ID index have been removed");
-		} catch (InterruptedException | ExecutionException e) {
-			log.error("Index removal failed, it needs to be removed manually", e);
-		}
 	}
 
 	/**
@@ -140,7 +121,8 @@ public final class TitanGryoReader implements GraphReader {
 	 *            the Titan graph to write to when reading from the stream.
 	 * @throws IOException
 	 */
-	public void readVertices(final InputStream inputStream, final TitanGraph graphToWriteTo) throws IOException {
+	public void readVertices(final InputStream inputStream, final TitanGraph graphToWriteTo, final IDMapping idMapping)
+			throws IOException {
 		final AtomicLong counter = new AtomicLong(0);
 
 		final boolean supportsTx = graphToWriteTo.features().graph().supportsTransactions();
@@ -161,8 +143,9 @@ public final class TitanGryoReader implements GraphReader {
 			});
 
 			Long originalID = (Long) starVertex.id();
+			Long currentID = (Long) v.id();
 
-			v.property(ORIGINAL_ID_PROPERTY, originalID);
+			idMapping.setCurrentID(originalID, currentID);
 
 			if (supportsTx && counter.incrementAndGet() % batchSize == 0)
 				graphToWriteTo.tx().commit();
@@ -188,7 +171,8 @@ public final class TitanGryoReader implements GraphReader {
 	 *            the Titan graph to write to when reading from the stream.
 	 * @throws IOException
 	 */
-	public void readEdges(final InputStream inputStream, final TitanGraph graphToWriteTo) throws IOException {
+	public void readEdges(final InputStream inputStream, final TitanGraph graphToWriteTo, final IDMapping idMapping)
+			throws IOException {
 		final AtomicLong counter = new AtomicLong(0);
 
 		final Graph.Features.EdgeFeatures edgeFeatures = graphToWriteTo.features().edge();
@@ -210,8 +194,11 @@ public final class TitanGryoReader implements GraphReader {
 				Long outID = (Long) e.outVertex().id();
 				Long inID = (Long) e.inVertex().id();
 
-				Vertex outV = traversal.V().has(ORIGINAL_ID_PROPERTY, outID).next();
-				Vertex inV = traversal.V().has(ORIGINAL_ID_PROPERTY, inID).next();
+				Long currentOutID = idMapping.getCurrentID(outID);
+				Long currentInID = idMapping.getCurrentID(inID);
+
+				Vertex outV = traversal.V(currentOutID).next();
+				Vertex inV = traversal.V(currentInID).next();
 
 				final Edge newEdge = edgeFeatures.willAllowId(e.id()) ? outV.addEdge(e.label(), inV, T.id, e.id())
 						: outV.addEdge(e.label(), inV);
