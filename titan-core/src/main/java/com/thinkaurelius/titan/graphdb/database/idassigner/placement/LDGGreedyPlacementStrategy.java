@@ -123,18 +123,19 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 			partitionScores[i] = neighbourCount[i] * (1 - ((double) partitionSizes[i]) / partitionCapacity);
 		}
 
-		int assignedPartition = -1;
+		List<Integer> candidatePartitions = Lists.newArrayList();
+
 		double tempMax = -1;
 		for (int i : availablePartitions) {
 			if (partitionScores[i] > tempMax) {
-				assignedPartition = i;
 				tempMax = partitionScores[i];
+				candidatePartitions.clear();
+				candidatePartitions.add(i);
+			} else if (partitionScores[i] == tempMax) {
+				candidatePartitions.add(i);
 			}
 		}
-		if (assignedPartition < 0) {
-			// no max score based assignment
-			assignedPartition = getRandomPartition();
-		}
+		int assignedPartition = candidatePartitions.get(random.nextInt(candidatePartitions.size()));
 
 		return assignedPartition;
 	}
