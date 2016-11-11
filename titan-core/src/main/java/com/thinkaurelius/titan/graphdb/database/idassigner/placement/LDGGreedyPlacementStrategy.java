@@ -37,6 +37,10 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 			"Total size (number of vertices) for all partitions, only applicable for explicit graph partitioners",
 			ConfigOption.Type.MASKABLE, 10);
 
+	public static final ConfigOption<Double> PARTITION_BALANCE_SLACK = new ConfigOption<Double>(
+			GraphDatabaseConfiguration.CLUSTER_NS, "partition-balance-slackness",
+			"Slackness paramater for partition balance", ConfigOption.Type.MASKABLE, (double) 0);
+
 	public static final ConfigOption<String> IDS_PLACEMENT_HISTORY = new ConfigOption<String>(
 			GraphDatabaseConfiguration.IDS_NS, "placement-history",
 			"Placement history Implementation for Greedy Partitioners", ConfigOption.Type.MASKABLE, "inmemory");
@@ -56,18 +60,21 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 
 	private List<Integer> availablePartitions;
 	private int[] partitionSizes;
+	// 2D array keeping track of number of edges between partitions
+	private int[][] edgeCut;
 
 	private PlacementHistory placementHistory;
 
 	public LDGGreedyPlacementStrategy(Configuration config) {
 		int maxPartitions = config.get(GraphDatabaseConfiguration.CLUSTER_MAX_PARTITIONS);
 		int totalCapacity = config.get(TOTAL_CAPACITY);
+		double balanceSlack = config.get(PARTITION_BALANCE_SLACK);
 
 		Preconditions.checkArgument(totalCapacity > 0 && maxPartitions > 0);
 
 		this.maxPartitions = maxPartitions;
 		this.totalCapacity = totalCapacity;
-		this.partitionCapacity = totalCapacity / maxPartitions;
+		this.partitionCapacity = (int) ((totalCapacity / maxPartitions) * (1 + balanceSlack));
 
 		if (config.get(IDS_PLACEMENT_HISTORY).equals(PlacementHistory.MEMCACHED_PLACEMENT_HISTORY)) {
 			String hostname = config.get(IDS_PLACEMENT_HISTORY_HOSTNAME);
@@ -78,6 +85,7 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 
 		availablePartitions = new ArrayList<>(maxPartitions);
 		partitionSizes = new int[maxPartitions];
+		edgeCut = new int[maxPartitions][maxPartitions];
 
 		// initially all partitions are available
 		for (int i = 0; i < maxPartitions; i++) {
@@ -98,25 +106,8 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 			return getRandomPartition();
 		}
 
-		List<Long> neighbourList = Lists.newArrayList();
-		vertex.edges(Direction.BOTH).forEachRemaining(edge -> {
-			if (edge.inVertex().id().equals(vertex.id())) {
-				neighbourList.add((Long) edge.outVertex().id());
-			} else {
-				neighbourList.add((Long) edge.inVertex().id());
-			}
-		});
-
 		double[] partitionScores = new double[maxPartitions];
-		int[] neighbourCount = new int[maxPartitions];
-
-		for (Long neighbour : neighbourList) {
-			Integer partition = placementHistory.getPartition(neighbour);
-			if (partition != null) {
-				// means that adjacent vertex previously assigned
-				neighbourCount[partition]++;
-			}
-		}
+		int[] neighbourCount = getNeighbourCount(vertex);
 
 		for (int i = 0; i < maxPartitions; i++) {
 			// actual LDG formula
@@ -157,6 +148,13 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 		}
 
 		log.warn("Vertex {} assigned to partition {}", ++counter, partitionID);
+
+		// record number of edges to different partitions, so that we can
+		// compute edge-cut
+		int[] neighbourCount = getNeighbourCount(vertex);
+		for (int i = 0; i < neighbourCount.length; i++) {
+			this.edgeCut[partitionID][i] += neighbourCount[i];
+		}
 	}
 
 	@Override
@@ -196,6 +194,29 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 	 */
 	public int getRandomPartition() {
 		return availablePartitions.get(random.nextInt(availablePartitions.size()));
+	}
+
+	private int[] getNeighbourCount(StarVertex vertex) {
+		List<Long> neighbourList = Lists.newArrayList();
+		vertex.edges(Direction.BOTH).forEachRemaining(edge -> {
+			if (edge.inVertex().id().equals(vertex.id())) {
+				neighbourList.add((Long) edge.outVertex().id());
+			} else {
+				neighbourList.add((Long) edge.inVertex().id());
+			}
+		});
+
+		int[] neighbourCount = new int[maxPartitions];
+
+		for (Long neighbour : neighbourList) {
+			Integer partition = placementHistory.getPartition(neighbour);
+			if (partition != null) {
+				// means that adjacent vertex previously assigned
+				neighbourCount[partition]++;
+			}
+		}
+
+		return neighbourCount;
 	}
 
 }
