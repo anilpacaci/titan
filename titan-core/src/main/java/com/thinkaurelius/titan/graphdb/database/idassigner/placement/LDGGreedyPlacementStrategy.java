@@ -59,9 +59,9 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 	private int counter = 0;
 
 	private List<Integer> availablePartitions;
-	private int[] partitionSizes;
+	public static int[] partitionSizes;
 	// 2D array keeping track of number of edges between partitions
-	private int[][] edgeCut;
+	public static int[][] edgeCut;
 
 	private PlacementHistory placementHistory;
 

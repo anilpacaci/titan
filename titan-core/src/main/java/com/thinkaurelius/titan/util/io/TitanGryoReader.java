@@ -49,6 +49,7 @@ import com.thinkaurelius.titan.diskstorage.configuration.ConfigOption;
 import com.thinkaurelius.titan.diskstorage.configuration.Configuration;
 import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
 import com.thinkaurelius.titan.graphdb.database.StandardTitanGraph;
+import com.thinkaurelius.titan.graphdb.database.idassigner.placement.LDGGreedyPlacementStrategy;
 import com.thinkaurelius.titan.graphdb.database.management.ManagementSystem;
 
 /**
@@ -105,6 +106,28 @@ public final class TitanGryoReader implements GraphReader {
 		readEdges(inputStream, graphToWriteTo, idMapping);
 
 		log.warn("Edges are read into the graph");
+
+		int[] partitionSizes = LDGGreedyPlacementStrategy.partitionSizes;
+		for (int i = 0; i < partitionSizes.length; i++) {
+			log.warn("Partition {} vertices {}", i, partitionSizes[i]);
+		}
+
+		long edgeCut = 0;
+		long edgePreserved = 0;
+
+		int[][] edgecounts = LDGGreedyPlacementStrategy.edgeCut;
+		for (int i = 0; i < edgecounts.length; i++) {
+			for (int j = 0; j < edgecounts[i].length; j++) {
+				if (i == j) {
+					edgePreserved += edgecounts[i][j];
+				} else {
+					edgeCut += edgecounts[i][j];
+				}
+			}
+		}
+
+		log.warn("# of Edge-cut: {}", edgeCut);
+		log.warn("# of Edges: {}", edgeCut + edgePreserved);
 
 	}
 
@@ -203,8 +226,10 @@ public final class TitanGryoReader implements GraphReader {
 				final Edge newEdge = edgeFeatures.willAllowId(e.id()) ? outV.addEdge(e.label(), inV, T.id, e.id())
 						: outV.addEdge(e.label(), inV);
 				e.properties().forEachRemaining(p -> newEdge.property(p.key(), p.value()));
-				if (supportsTx && counter.incrementAndGet() % batchSize == 0)
+				if (supportsTx && counter.incrementAndGet() % batchSize == 0) {
 					graphToWriteTo.tx().commit();
+					log.warn("Total relations committed {}", counter.get());
+				}
 			});
 
 			return starVertex;
