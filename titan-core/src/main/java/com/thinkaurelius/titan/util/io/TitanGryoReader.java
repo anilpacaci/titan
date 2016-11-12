@@ -82,6 +82,15 @@ public final class TitanGryoReader implements GraphReader {
 		this.batchSize = batchSize;
 	}
 
+	/**
+	 * Partitioning aware implementation for read graph method
+	 * 
+	 * @param file
+	 *            Path to file
+	 * @param graphToWriteTo
+	 *            TitanGraph
+	 * @throws IOException
+	 */
 	public void readGraph(final String file, final TitanGraph graphToWriteTo) throws IOException {
 		// first initialize ID Mapping implementation
 		IDMapping idMapping;

@@ -93,7 +93,7 @@ public abstract class TitanBlueprintsTransaction implements TitanTransaction {
 	 */
 	@Override
 	public TitanVertex addVertex(Object... keyValues) {
-		return addVertex(null, keyValues);
+		return addStarVertex(null, keyValues);
 	}
 
 	@Override

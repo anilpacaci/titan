@@ -32,6 +32,20 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 
 	private static final Logger log = LoggerFactory.getLogger(LDGGreedyPlacementStrategy.class);
 
+	/**
+	 * This option was originally in {@link GraphDatabaseConfiguration} but then
+	 * disabled. Now it is just used by GreedyPartitioner to decide between
+	 * random - explicit partitioning. For explicit partitioning to kick in, one
+	 * needs to set this flag <code>true</code>
+	 */
+	public static final ConfigOption<Boolean> CLUSTER_PARTITION = new ConfigOption<Boolean>(
+			GraphDatabaseConfiguration.CLUSTER_NS, "partition",
+			"Whether the graph's element should be randomly distributed across the cluster "
+					+ "(true) or explicitly allocated to individual partition blocks based on the configured graph partitioner (false). "
+					+ "Unless explicitly set, this defaults false for stores that hash keys and defaults true for stores that preserve key order "
+					+ "(such as HBase and Cassandra with ByteOrderedPartitioner).",
+			ConfigOption.Type.FIXED, false);
+
 	public static final ConfigOption<Integer> TOTAL_CAPACITY = new ConfigOption<Integer>(
 			GraphDatabaseConfiguration.CLUSTER_NS, "total-capacity",
 			"Total size (number of vertices) for all partitions, only applicable for explicit graph partitioners",
@@ -58,6 +72,8 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 
 	private int counter = 0;
 
+	private boolean partitioningEnabled;
+
 	private List<Integer> availablePartitions;
 	public static int[] partitionSizes;
 	// 2D array keeping track of number of edges between partitions
@@ -69,6 +85,7 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 		int maxPartitions = config.get(GraphDatabaseConfiguration.CLUSTER_MAX_PARTITIONS);
 		int totalCapacity = config.get(TOTAL_CAPACITY);
 		double balanceSlack = config.get(PARTITION_BALANCE_SLACK);
+		partitioningEnabled = config.get(CLUSTER_PARTITION);
 
 		Preconditions.checkArgument(totalCapacity > 0 && maxPartitions > 0);
 
@@ -103,6 +120,11 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 	public int getPartition(InternalElement element, StarVertex vertex) {
 		// assign first 0.1% of vertices randomly
 		if (this.counter < this.totalCapacity / 1000) {
+			return getRandomPartition();
+		}
+
+		if (vertex == null || !this.partitioningEnabled) {
+			// there is no adjacency information or partitioning is explicity disabled, resort to random partitioning
 			return getRandomPartition();
 		}
 
