@@ -44,7 +44,7 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 					+ "(true) or explicitly allocated to individual partition blocks based on the configured graph partitioner (false). "
 					+ "Unless explicitly set, this defaults false for stores that hash keys and defaults true for stores that preserve key order "
 					+ "(such as HBase and Cassandra with ByteOrderedPartitioner).",
-			ConfigOption.Type.FIXED, false);
+			ConfigOption.Type.MASKABLE, false);
 
 	public static final ConfigOption<Integer> TOTAL_CAPACITY = new ConfigOption<Integer>(
 			GraphDatabaseConfiguration.CLUSTER_NS, "total-capacity",
