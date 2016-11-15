@@ -86,6 +86,8 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 		int totalCapacity = config.get(TOTAL_CAPACITY);
 		double balanceSlack = config.get(PARTITION_BALANCE_SLACK);
 		partitioningEnabled = config.get(CLUSTER_PARTITION);
+		
+		log.warn("Partitioning enabled: {}", partitioningEnabled);
 
 		Preconditions.checkArgument(totalCapacity > 0 && maxPartitions > 0);
 
@@ -96,6 +98,7 @@ public class LDGGreedyPlacementStrategy implements IDPlacementStrategy {
 		if (config.get(IDS_PLACEMENT_HISTORY).equals(PlacementHistory.MEMCACHED_PLACEMENT_HISTORY)) {
 			String hostname = config.get(IDS_PLACEMENT_HISTORY_HOSTNAME);
 			this.placementHistory = new MemcachedPlacementHistory(hostname);
+			log.warn("Memcached location: {}", hostname);
 		} else {
 			this.placementHistory = new InMemoryPlacementHistory(totalCapacity);
 		}
