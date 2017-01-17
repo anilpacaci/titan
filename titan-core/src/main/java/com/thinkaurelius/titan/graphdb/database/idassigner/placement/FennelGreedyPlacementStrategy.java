@@ -58,7 +58,7 @@ public class FennelGreedyPlacementStrategy extends AbstractGreedyPlacementStrate
 
 		List<Integer> candidatePartitions = Lists.newArrayList();
 
-		double tempMax = -1;
+		double tempMax = Double.MIN_VALUE;
 		for (int i : availablePartitions) {
 			if (partitionScores[i] > tempMax) {
 				tempMax = partitionScores[i];
