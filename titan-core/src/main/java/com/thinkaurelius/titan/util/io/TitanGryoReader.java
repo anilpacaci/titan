@@ -38,6 +38,7 @@ import org.apache.tinkerpop.shaded.kryo.io.Input;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableMap;
 import com.thinkaurelius.titan.core.Cardinality;
 import com.thinkaurelius.titan.core.PropertyKey;
 import com.thinkaurelius.titan.core.TitanGraph;
@@ -45,11 +46,16 @@ import com.thinkaurelius.titan.core.schema.SchemaAction;
 import com.thinkaurelius.titan.core.schema.SchemaStatus;
 import com.thinkaurelius.titan.core.schema.TitanGraphIndex;
 import com.thinkaurelius.titan.core.schema.TitanManagement;
+import com.thinkaurelius.titan.diskstorage.Backend;
 import com.thinkaurelius.titan.diskstorage.configuration.ConfigOption;
 import com.thinkaurelius.titan.diskstorage.configuration.Configuration;
 import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
 import com.thinkaurelius.titan.graphdb.database.StandardTitanGraph;
+import com.thinkaurelius.titan.graphdb.database.idassigner.VertexIDAssigner;
+import com.thinkaurelius.titan.graphdb.database.idassigner.placement.AbstractGreedyPlacementStrategy;
+import com.thinkaurelius.titan.graphdb.database.idassigner.placement.IDPlacementStrategy;
 import com.thinkaurelius.titan.graphdb.database.idassigner.placement.LDGGreedyPlacementStrategy;
+import com.thinkaurelius.titan.graphdb.database.idassigner.placement.SimpleBulkPlacementStrategy;
 import com.thinkaurelius.titan.graphdb.database.management.ManagementSystem;
 
 /**
@@ -69,6 +75,9 @@ public final class TitanGryoReader implements GraphReader {
 	public static final ConfigOption<String> IDS_LOADER_MAPPING_HOSTNAME = new ConfigOption<String>(
 			GraphDatabaseConfiguration.IDS_NS, "loader-mapping-hostname",
 			"Memcached Server address for ID Mapping Implementation", ConfigOption.Type.MASKABLE, "localhost:11211");
+
+	private static final Map<String, String> REGISTERED_PLACEMENT_STRATEGIES = ImmutableMap.of("simple",
+			SimpleBulkPlacementStrategy.class.getName());
 
 	private static final String ORIGINAL_ID_PROPERTY = "originalID";
 	private static final String ORIGINAL_ID_INDEX_NAME = "byOriginalID";
@@ -102,6 +111,9 @@ public final class TitanGryoReader implements GraphReader {
 			idMapping = new InMemoryIDMapping();
 		}
 
+		AbstractGreedyPlacementStrategy placementStrategy = Backend.getImplementationClass(configuration,
+				configuration.get(VertexIDAssigner.PLACEMENT_STRATEGY), REGISTERED_PLACEMENT_STRATEGIES);
+
 		log.warn("ID Index have been created");
 
 		// first read vertices from stream
@@ -116,7 +128,7 @@ public final class TitanGryoReader implements GraphReader {
 
 		log.warn("Edges are read into the graph");
 
-		int[] partitionSizes = LDGGreedyPlacementStrategy.partitionSizes;
+		int[] partitionSizes = placementStrategy.partitionSizes;
 		for (int i = 0; i < partitionSizes.length; i++) {
 			log.warn("Partition {} vertices {}", i, partitionSizes[i]);
 		}
@@ -124,7 +136,7 @@ public final class TitanGryoReader implements GraphReader {
 		long edgeCut = 0;
 		long edgePreserved = 0;
 
-		int[][] edgecounts = LDGGreedyPlacementStrategy.edgeCut;
+		int[][] edgecounts = placementStrategy.edgeCut;
 		for (int i = 0; i < edgecounts.length; i++) {
 			for (int j = 0; j < edgecounts[i].length; j++) {
 				if (i == j) {

@@ -8,17 +8,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Lists;
+import com.thinkaurelius.titan.diskstorage.configuration.ConfigOption;
 import com.thinkaurelius.titan.diskstorage.configuration.Configuration;
+import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
 import com.thinkaurelius.titan.graphdb.configuration.PreInitializeConfigOptions;
 import com.thinkaurelius.titan.graphdb.internal.InternalElement;
 
 @PreInitializeConfigOptions
-public class LDGGreedyPlacementStrategy extends AbstractGreedyPlacementStrategy implements IDPlacementStrategy {
+public class FennelGreedyPlacementStrategy extends AbstractGreedyPlacementStrategy implements IDPlacementStrategy {
 
-	private static final Logger log = LoggerFactory.getLogger(LDGGreedyPlacementStrategy.class);
+	private static final Logger log = LoggerFactory.getLogger(FennelGreedyPlacementStrategy.class);
 
-	public LDGGreedyPlacementStrategy(Configuration config) {
+	/**
+	 * Fennel Specific Parameters.
+	 */
+	public static final ConfigOption<Double> PARTITION_BALANCE_COEFFICINET = new ConfigOption<Double>(
+			GraphDatabaseConfiguration.CLUSTER_NS, "partition-balance-coefficient",
+			"Controls the nature of heuristics, higher values ignores neighbourhood count. Recommended to set between 1 and 2",
+			ConfigOption.Type.MASKABLE, (double) 1.5);
+
+	private double balanceCoefficient;
+
+	public FennelGreedyPlacementStrategy(Configuration config) {
 		super(config);
+		this.balanceCoefficient = config.get(PARTITION_BALANCE_COEFFICINET);
 	}
 
 	@Override
@@ -38,8 +51,9 @@ public class LDGGreedyPlacementStrategy extends AbstractGreedyPlacementStrategy 
 		int[] neighbourCount = getNeighbourCount(vertex);
 
 		for (int i = 0; i < maxPartitions; i++) {
-			// actual LDG formula
-			partitionScores[i] = neighbourCount[i] * (1 - ((double) partitionSizes[i]) / partitionCapacity);
+			// greedy objective function for Fennel Formulation
+			partitionScores[i] = neighbourCount[i] - (this.balanceSlack * this.balanceCoefficient
+					* Math.pow(partitionSizes[i], this.balanceCoefficient - 1));
 		}
 
 		List<Integer> candidatePartitions = Lists.newArrayList();

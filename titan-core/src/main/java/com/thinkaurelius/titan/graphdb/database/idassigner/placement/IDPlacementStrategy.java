@@ -1,18 +1,18 @@
 package com.thinkaurelius.titan.graphdb.database.idassigner.placement;
 
-import com.thinkaurelius.titan.graphdb.idmanagement.IDManager;
-import com.thinkaurelius.titan.graphdb.internal.InternalElement;
-import com.thinkaurelius.titan.graphdb.internal.InternalVertex;
-
 import java.util.List;
 import java.util.Map;
 
 import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
 
+import com.thinkaurelius.titan.graphdb.idmanagement.IDManager;
+import com.thinkaurelius.titan.graphdb.internal.InternalElement;
+import com.thinkaurelius.titan.graphdb.internal.InternalVertex;
+
 /**
- * Determines how vertices are placed in individual graph partitions.
- * A particular implementation determines the partition id of a (newly created) vertex. The vertex is
- * then assigned to said partition by Titan.
+ * Determines how vertices are placed in individual graph partitions. A
+ * particular implementation determines the partition id of a (newly created)
+ * vertex. The vertex is then assigned to said partition by Titan.
  *
  * The id placement strategy is configurable.
  *
@@ -20,89 +20,114 @@ import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
  */
 public interface IDPlacementStrategy {
 
-    /**
-     * Individually assigns an id to the given vertex or relation.
-     *
-     * @param element Vertex or relation to assign id to.
-     * @return
-     */
-    public int getPartition(InternalElement element);
-    
-    /**
-     * Individually assigns an id to the given vertex or relation.
-     *
-     * @param element Vertex or relation to assign id to.
-     * @param vertex Provides necessary context for greedy partitining heuristics (properties and adjacency information)
-     * @return
-     */
-    public int getPartition(InternalElement element, StarVertex vertex);
-    
-    /**
-     * helper method to hint partitioning algorithm about the final placement of element
-     * @param element that was assigned
-     * @param partitionID final assignment for element
-     */
-    public void assignedPartition(InternalElement element, int partitionID);
+	/**
+	 * Individually assigns an id to the given vertex or relation.
+	 *
+	 * @param element
+	 *            Vertex or relation to assign id to.
+	 * @return
+	 */
+	public int getPartition(InternalElement element);
 
-    /**
-     * helper method to hint partitioning algorithm about the final placement of element
-     * @param element that was assigned
-     * @param vertex Context information for greedy partitioners
-     * @param partitionID final assignment for element
-     */
-    public void assignedPartition(InternalElement element, StarVertex vertex, int partitionID);
-    
-    /**
-     * Bulk assignment of idAuthorities to vertices.
-     * <p/>
-     * It is expected that the passed in map contains the partition assignment after this method
-     * returns. Any initial values in the map are meaningless and to be ignored.
-     * <p/>
-     * This is an optional operation. Check with {@link #supportsBulkPlacement()} first.
-     *
-     * @param vertices Map containing all vertices and their partition placement.
-     */
-    public void getPartitions(Map<InternalVertex, PartitionAssignment> vertices);
+	/**
+	 * Individually assigns an id to the given vertex or relation.
+	 *
+	 * @param element
+	 *            Vertex or relation to assign id to.
+	 * @param vertex
+	 *            Provides necessary context for greedy partitining heuristics
+	 *            (properties and adjacency information)
+	 * @return
+	 */
+	public int getPartition(InternalElement element, StarVertex vertex);
 
-    /**
-     * After construction, the {@link com.thinkaurelius.titan.graphdb.idmanagement.IDManager} used by this graph instance
-     * is injected into this IDPlacementStrategy so that the id pattern of vertices can be inspected.
-     * This method is guaranteed to be called before any partition assignments are made.
-     *
-     * @param idManager
-     */
-    public void injectIDManager(IDManager idManager);
+	/**
+	 * helper method to hint partitioning algorithm about the final placement of
+	 * element
+	 * 
+	 * @param element
+	 *            that was assigned
+	 * @param partitionID
+	 *            final assignment for element
+	 */
+	public void assignedPartition(InternalElement element, int partitionID);
 
-    /**
-     * Whether this placement strategy supports bulk placement.
-     * If not, then {@link #getPartitions(java.util.Map)} will throw {@link UnsupportedOperationException}
-     *
-     * @return
-     */
-    public boolean supportsBulkPlacement();
+	/**
+	 * helper method to hint partitioning algorithm about the final placement of
+	 * element
+	 * 
+	 * @param element
+	 *            that was assigned
+	 * @param vertex
+	 *            Context information for greedy partitioners
+	 * @param partitionID
+	 *            final assignment for element
+	 */
+	public void assignedPartition(InternalElement element, StarVertex vertex, int partitionID);
 
-    /**
-     * If Titan is embedded, this method is used to indicate to the placement strategy which
-     * part of the partition id space is hosted locally so that vertex and edge placements can be made accordingly
-     * (i.e. preferring to assign partitions in the local ranges so that the data is hosted locally which is often
-     * faster).
-     * <p/>
-     * This method can be called at any time while Titan is running. It is typically called right
-     * after construction and when the id space is redistributed.
-     * <p/>
-     * Depending on the storage backend one or multiple ranges of partition ids may be given. However, this list is never
-     * emtpy.
-     *
-     * @param localPartitionIdRanges List of {@link PartitionIDRange}s correspondinging to the locally hosted partitions
-     */
-    public void setLocalPartitionBounds(List<PartitionIDRange> localPartitionIdRanges);
+	/**
+	 * Bulk assignment of idAuthorities to vertices.
+	 * <p/>
+	 * It is expected that the passed in map contains the partition assignment
+	 * after this method returns. Any initial values in the map are meaningless
+	 * and to be ignored.
+	 * <p/>
+	 * This is an optional operation. Check with
+	 * {@link #supportsBulkPlacement()} first.
+	 *
+	 * @param vertices
+	 *            Map containing all vertices and their partition placement.
+	 */
+	public void getPartitions(Map<InternalVertex, PartitionAssignment> vertices);
 
-    /**
-     * Called when there are no more idAuthorities left in the given partition. It is expected that the
-     * placement strategy will no longer use said partition in its placement suggestions.
-     *
-     * @param partitionID Id of the partition that has been exhausted.
-     */
-    public void exhaustedPartition(int partitionID);
+	/**
+	 * After construction, the
+	 * {@link com.thinkaurelius.titan.graphdb.idmanagement.IDManager} used by
+	 * this graph instance is injected into this IDPlacementStrategy so that the
+	 * id pattern of vertices can be inspected. This method is guaranteed to be
+	 * called before any partition assignments are made.
+	 *
+	 * @param idManager
+	 */
+	public void injectIDManager(IDManager idManager);
+
+	/**
+	 * Whether this placement strategy supports bulk placement. If not, then
+	 * {@link #getPartitions(java.util.Map)} will throw
+	 * {@link UnsupportedOperationException}
+	 *
+	 * @return
+	 */
+	public boolean supportsBulkPlacement();
+
+	/**
+	 * If Titan is embedded, this method is used to indicate to the placement
+	 * strategy which part of the partition id space is hosted locally so that
+	 * vertex and edge placements can be made accordingly (i.e. preferring to
+	 * assign partitions in the local ranges so that the data is hosted locally
+	 * which is often faster).
+	 * <p/>
+	 * This method can be called at any time while Titan is running. It is
+	 * typically called right after construction and when the id space is
+	 * redistributed.
+	 * <p/>
+	 * Depending on the storage backend one or multiple ranges of partition ids
+	 * may be given. However, this list is never emtpy.
+	 *
+	 * @param localPartitionIdRanges
+	 *            List of {@link PartitionIDRange}s correspondinging to the
+	 *            locally hosted partitions
+	 */
+	public void setLocalPartitionBounds(List<PartitionIDRange> localPartitionIdRanges);
+
+	/**
+	 * Called when there are no more idAuthorities left in the given partition.
+	 * It is expected that the placement strategy will no longer use said
+	 * partition in its placement suggestions.
+	 *
+	 * @param partitionID
+	 *            Id of the partition that has been exhausted.
+	 */
+	public void exhaustedPartition(int partitionID);
 
 }
