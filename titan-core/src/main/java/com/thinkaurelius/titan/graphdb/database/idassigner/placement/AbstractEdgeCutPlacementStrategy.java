@@ -28,9 +28,9 @@ import com.thinkaurelius.titan.graphdb.internal.InternalElement;
 import com.thinkaurelius.titan.graphdb.internal.InternalVertex;
 
 @PreInitializeConfigOptions
-public abstract class AbstractGreedyPlacementStrategy implements IDPlacementStrategy {
+public abstract class AbstractEdgeCutPlacementStrategy implements IDPlacementStrategy {
 
-	private static final Logger log = LoggerFactory.getLogger(AbstractGreedyPlacementStrategy.class);
+	private static final Logger log = LoggerFactory.getLogger(AbstractEdgeCutPlacementStrategy.class);
 
 	/**
 	 * This option was originally in {@link GraphDatabaseConfiguration} but then
@@ -83,7 +83,7 @@ public abstract class AbstractGreedyPlacementStrategy implements IDPlacementStra
 
 	protected PlacementHistory placementHistory;
 
-	public AbstractGreedyPlacementStrategy(Configuration config) {
+	public AbstractEdgeCutPlacementStrategy(Configuration config) {
 		this.maxPartitions = config.get(GraphDatabaseConfiguration.CLUSTER_MAX_PARTITIONS);
 		this.totalCapacity = config.get(TOTAL_CAPACITY);
 		this.balanceSlack = config.get(PARTITION_BALANCE_SLACK);

@@ -13,7 +13,7 @@ import com.thinkaurelius.titan.graphdb.configuration.PreInitializeConfigOptions;
 import com.thinkaurelius.titan.graphdb.internal.InternalElement;
 
 @PreInitializeConfigOptions
-public class LDGGreedyPlacementStrategy extends AbstractGreedyPlacementStrategy implements IDPlacementStrategy {
+public class LDGGreedyPlacementStrategy extends AbstractEdgeCutPlacementStrategy implements IDPlacementStrategy {
 
 	private static final Logger log = LoggerFactory.getLogger(LDGGreedyPlacementStrategy.class);
 

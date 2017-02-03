@@ -15,7 +15,7 @@ import com.thinkaurelius.titan.graphdb.configuration.PreInitializeConfigOptions;
 import com.thinkaurelius.titan.graphdb.internal.InternalElement;
 
 @PreInitializeConfigOptions
-public class FennelGreedyPlacementStrategy extends AbstractGreedyPlacementStrategy implements IDPlacementStrategy {
+public class FennelGreedyPlacementStrategy extends AbstractEdgeCutPlacementStrategy implements IDPlacementStrategy {
 
 	private static final Logger log = LoggerFactory.getLogger(FennelGreedyPlacementStrategy.class);
 

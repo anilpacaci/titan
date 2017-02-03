@@ -52,7 +52,7 @@ import com.thinkaurelius.titan.diskstorage.configuration.Configuration;
 import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
 import com.thinkaurelius.titan.graphdb.database.StandardTitanGraph;
 import com.thinkaurelius.titan.graphdb.database.idassigner.VertexIDAssigner;
-import com.thinkaurelius.titan.graphdb.database.idassigner.placement.AbstractGreedyPlacementStrategy;
+import com.thinkaurelius.titan.graphdb.database.idassigner.placement.AbstractEdgeCutPlacementStrategy;
 import com.thinkaurelius.titan.graphdb.database.idassigner.placement.IDPlacementStrategy;
 import com.thinkaurelius.titan.graphdb.database.idassigner.placement.LDGGreedyPlacementStrategy;
 import com.thinkaurelius.titan.graphdb.database.idassigner.placement.SimpleBulkPlacementStrategy;
@@ -111,7 +111,7 @@ public final class TitanGryoReader implements GraphReader {
 			idMapping = new InMemoryIDMapping();
 		}
 
-		AbstractGreedyPlacementStrategy placementStrategy = Backend.getImplementationClass(configuration,
+		AbstractEdgeCutPlacementStrategy placementStrategy = Backend.getImplementationClass(configuration,
 				configuration.get(VertexIDAssigner.PLACEMENT_STRATEGY), REGISTERED_PLACEMENT_STRATEGIES);
 
 		log.warn("ID Index have been created");
