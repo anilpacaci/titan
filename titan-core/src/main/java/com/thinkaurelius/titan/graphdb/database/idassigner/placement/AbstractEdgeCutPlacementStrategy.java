@@ -1,6 +1,7 @@
 package com.thinkaurelius.titan.graphdb.database.idassigner.placement;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,6 +65,14 @@ public abstract class AbstractEdgeCutPlacementStrategy implements IDPlacementStr
 			"Memcached Server address for Placement History Implementation", ConfigOption.Type.MASKABLE,
 			"localhost:11211");
 
+	public static final ConfigOption<String[]> PARTITIONING_VERTEX_LABELS = new ConfigOption<String[]>(
+			GraphDatabaseConfiguration.PARTITIONING_NS, "vertex-labels",
+			"List of vertex labels to be considered for partitioning", ConfigOption.Type.MASKABLE, new String[0]);
+
+	public static final ConfigOption<String[]> PARTITIONING_EDGE_LABELS = new ConfigOption<String[]>(
+			GraphDatabaseConfiguration.PARTITIONING_NS, "edge-labels",
+			"List of edge labels to be considered for partitioning", ConfigOption.Type.MASKABLE, new String[0]);
+
 	protected final Random random = new Random();
 
 	protected int maxPartitions;
@@ -82,6 +91,9 @@ public abstract class AbstractEdgeCutPlacementStrategy implements IDPlacementStr
 	public static int[][] edgeCut;
 
 	protected PlacementHistory placementHistory;
+
+	private String[] vertexLabels;
+	private String[] edgeLabels;
 
 	public AbstractEdgeCutPlacementStrategy(Configuration config) {
 		this.maxPartitions = config.get(GraphDatabaseConfiguration.CLUSTER_MAX_PARTITIONS);
@@ -102,7 +114,7 @@ public abstract class AbstractEdgeCutPlacementStrategy implements IDPlacementStr
 		} else {
 			this.placementHistory = new InMemoryPlacementHistory(totalCapacity);
 		}
-		
+
 		availablePartitions = new ArrayList<>(maxPartitions);
 		partitionSizes = new int[maxPartitions];
 		edgeCut = new int[maxPartitions][maxPartitions];
@@ -111,6 +123,10 @@ public abstract class AbstractEdgeCutPlacementStrategy implements IDPlacementStr
 		for (int i = 0; i < maxPartitions; i++) {
 			availablePartitions.add(i);
 		}
+
+		// edge labels to be considered for partitioning
+		vertexLabels = config.get(PARTITIONING_VERTEX_LABELS);
+		edgeLabels = config.get(PARTITIONING_EDGE_LABELS);
 	}
 
 	@Override
@@ -184,9 +200,34 @@ public abstract class AbstractEdgeCutPlacementStrategy implements IDPlacementStr
 		return availablePartitions.get(random.nextInt(availablePartitions.size()));
 	}
 
-	private int[] getNeighbourCount(StarVertex vertex) {
+	/**
+	 * Checks whether given vertex should be considered for partitioning or not.
+	 * If no vertex label specified partition, all vertices are considered for
+	 * partitioning by default.
+	 * 
+	 * @param vertex
+	 * @return
+	 */
+	protected boolean considerForPartitioning(StarVertex vertex) {
+		if (this.vertexLabels.length == 0) {
+			// means that all vertices are considered for partitioning
+			return true;
+		} else {
+			String vertexLabel = vertex.label();
+			return Arrays.stream(this.vertexLabels).anyMatch(s -> s.equals(vertexLabel));
+		}
+	}
+
+	/**
+	 * for a given StarVertex it checks all the nighbours and produces neighbour
+	 * count per partition It only considers edges specified in edgeLabels
+	 * 
+	 * @param vertex
+	 * @return
+	 */
+	protected int[] getNeighbourCount(StarVertex vertex) {
 		List<Long> neighbourList = Lists.newArrayList();
-		vertex.edges(Direction.BOTH).forEachRemaining(edge -> {
+		vertex.edges(Direction.BOTH, this.edgeLabels).forEachRemaining(edge -> {
 			if (edge.inVertex().id().equals(vertex.id())) {
 				neighbourList.add((Long) edge.outVertex().id());
 			} else {

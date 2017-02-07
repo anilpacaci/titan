@@ -677,6 +677,10 @@ public class GraphDatabaseConfiguration {
         }
     });
 
+ // ################ PARTITIONING ###########################
+    // ################################################
+
+    public static final ConfigNamespace PARTITIONING_NS = new ConfigNamespace(ROOT_NS,"partitioning","Graph partitioning configuration options for multi-machine deployments");
 
 
     // ################ IDS ###########################

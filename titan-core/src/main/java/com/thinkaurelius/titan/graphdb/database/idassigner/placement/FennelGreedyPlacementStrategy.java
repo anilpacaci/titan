@@ -2,7 +2,6 @@ package com.thinkaurelius.titan.graphdb.database.idassigner.placement;
 
 import java.util.List;
 
-import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,7 @@ public class FennelGreedyPlacementStrategy extends AbstractEdgeCutPlacementStrat
 			return getRandomPartition();
 		}
 
-		if (vertex == null || !this.partitioningEnabled) {
+		if (vertex == null || !this.partitioningEnabled || !considerForPartitioning(vertex)) {
 			// there is no adjacency information or partitioning is explicity
 			// disabled, resort to random partitioning
 			return getRandomPartition();
@@ -58,7 +57,8 @@ public class FennelGreedyPlacementStrategy extends AbstractEdgeCutPlacementStrat
 
 		List<Integer> candidatePartitions = Lists.newArrayList();
 
-		// because DOUBLE.MIN_VALUE is actually smallest positive value that can be represented via double
+		// because DOUBLE.MIN_VALUE is actually smallest positive value that can
+		// be represented via double
 		double tempMax = -Double.MAX_VALUE;
 		for (int i : availablePartitions) {
 			if (partitionScores[i] > tempMax) {
@@ -72,29 +72,6 @@ public class FennelGreedyPlacementStrategy extends AbstractEdgeCutPlacementStrat
 		int assignedPartition = candidatePartitions.get(random.nextInt(candidatePartitions.size()));
 
 		return assignedPartition;
-	}
-
-	private int[] getNeighbourCount(StarVertex vertex) {
-		List<Long> neighbourList = Lists.newArrayList();
-		vertex.edges(Direction.BOTH).forEachRemaining(edge -> {
-			if (edge.inVertex().id().equals(vertex.id())) {
-				neighbourList.add((Long) edge.outVertex().id());
-			} else {
-				neighbourList.add((Long) edge.inVertex().id());
-			}
-		});
-
-		int[] neighbourCount = new int[maxPartitions];
-
-		for (Long neighbour : neighbourList) {
-			Integer partition = placementHistory.getPartition(neighbour);
-			if (partition != null) {
-				// means that adjacent vertex previously assigned
-				neighbourCount[partition]++;
-			}
-		}
-
-		return neighbourCount;
 	}
 
 }

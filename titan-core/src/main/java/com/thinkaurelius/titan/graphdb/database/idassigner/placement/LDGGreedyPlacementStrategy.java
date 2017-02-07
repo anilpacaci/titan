@@ -2,7 +2,6 @@ package com.thinkaurelius.titan.graphdb.database.idassigner.placement;
 
 import java.util.List;
 
-import org.apache.tinkerpop.gremlin.structure.Direction;
 import org.apache.tinkerpop.gremlin.structure.util.star.StarGraph.StarVertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +27,7 @@ public class LDGGreedyPlacementStrategy extends AbstractEdgeCutPlacementStrategy
 			return getRandomPartition();
 		}
 
-		if (vertex == null || !this.partitioningEnabled) {
+		if (vertex == null || !this.partitioningEnabled || !considerForPartitioning(vertex)) {
 			// there is no adjacency information or partitioning is explicity
 			// disabled, resort to random partitioning
 			return getRandomPartition();
@@ -57,29 +56,6 @@ public class LDGGreedyPlacementStrategy extends AbstractEdgeCutPlacementStrategy
 		int assignedPartition = candidatePartitions.get(random.nextInt(candidatePartitions.size()));
 
 		return assignedPartition;
-	}
-
-	private int[] getNeighbourCount(StarVertex vertex) {
-		List<Long> neighbourList = Lists.newArrayList();
-		vertex.edges(Direction.BOTH).forEachRemaining(edge -> {
-			if (edge.inVertex().id().equals(vertex.id())) {
-				neighbourList.add((Long) edge.outVertex().id());
-			} else {
-				neighbourList.add((Long) edge.inVertex().id());
-			}
-		});
-
-		int[] neighbourCount = new int[maxPartitions];
-
-		for (Long neighbour : neighbourList) {
-			Integer partition = placementHistory.getPartition(neighbour);
-			if (partition != null) {
-				// means that adjacent vertex previously assigned
-				neighbourCount[partition]++;
-			}
-		}
-
-		return neighbourCount;
 	}
 
 }
