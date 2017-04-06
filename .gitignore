@@ -50,3 +50,8 @@ titan-*/pom.xml.versionsBackup
 *~
 # Nano file backups
 *.save
+
+# log and serialization files
+*.log
+*.kryo
+*.gryo
